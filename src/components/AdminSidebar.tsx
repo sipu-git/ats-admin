@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const mainNavItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Add Job Post", url: "/add-job", icon: PlusCircle },
   { title: "View Applications", url: "/applications", icon: FileText },
   { title: "Current Jobs", url: "/jobs", icon: Briefcase },
@@ -112,8 +112,7 @@ export function AdminSidebar() {
       <SidebarFooter className="border-t border-sidebar-border p-4">
         {!collapsed && (
           <div className="text-xs text-sidebar-muted">
-            <p>© 2024 Government Job Portal</p>
-            <p className="mt-1">Version 1.0.0</p>
+            <p>© 2026 Job Portal</p>
           </div>
         )}
       </SidebarFooter>

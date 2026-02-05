@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { jobs, Job } from "@/lib/mockData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,50 +9,69 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import { Search, MoreVertical, Edit, Trash2, Eye, Copy, PlusCircle } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
 
-const getStatusBadgeClass = (status: string) => {
-  switch (status) {
-    case "Active":
-      return "status-badge status-active";
-    case "Closed":
-      return "status-badge status-closed";
-    case "Draft":
-      return "status-badge status-pending";
-    default:
-      return "status-badge";
-  }
+import { Search, MoreVertical, Edit, Trash2, Eye, Copy, PlusCircle, Building2, MapPin, Wallet, Calendar, Users, Plus } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { useAts } from "@/context/AtsContext";
+import { Card, CardContent } from "@/components/ui/card";
+
+const statusConfig: Record<
+  "Active" | "Expiring Soon" | "DeActivate" | "Expired",
+  { label: string; className: string }
+> = {
+  Active: {
+    label: "Active",
+    className: "bg-success/10 text-success border-success/20",
+  },
+  "Expiring Soon": {
+    label: "Expiring Soon",
+    className: "bg-warning/10 text-warning border-warning/20",
+  },
+  DeActivate: {
+    label: "Deactivated",
+    className: "bg-muted text-muted-foreground border-muted",
+  },
+  Expired: {
+    label: "Expired",
+    className: "bg-destructive/10 text-destructive border-destructive/20",
+  },
 };
+
 
 export default function Jobs() {
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [departmentFilter, setDepartmentFilter] = useState<string>("all");
+  const { jobs, loading, getJobs, deleteJob } = useAts()
 
-  const departments = [...new Set(jobs.map(j => j.department))];
+  useEffect(() => {
+    getJobs()
+  }, [])
 
-  const filteredJobs = jobs.filter((job) => {
-    const matchesSearch = 
-      job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.location.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === "all" || job.status === statusFilter;
-    const matchesDepartment = departmentFilter === "all" || job.department === departmentFilter;
-    
-    return matchesSearch && matchesStatus && matchesDepartment;
-  });
+{
+    loading && (
+      <tr>
+        <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">
+          Loading jobs...
+        </td>
+      </tr>
+    )
+  }
 
+  {
+    !loading && jobs.length === 0 && (
+      <tr>
+        <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">
+          No job records found
+        </td>
+      </tr>
+    )
+  }
+   const handleDelete = async (id: string) => {
+    const confirmed = window.confirm("Are you sure you want to remove this application?");
+    if (!confirmed) return;
+
+    await deleteJob(id);
+  };
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Page Header */}
@@ -80,153 +99,118 @@ export default function Jobs() {
         <div className="bg-status-warning-bg border border-status-warning/20 rounded-lg p-4">
           <p className="text-sm font-medium text-status-warning-text">Draft Jobs</p>
           <p className="text-2xl font-bold text-foreground">
-            {jobs.filter(j => j.status === "Draft").length}
+            {jobs.filter(j => j.status === "Expiring Soon").length}
           </p>
         </div>
         <div className="bg-status-neutral-bg border border-status-neutral/20 rounded-lg p-4">
           <p className="text-sm font-medium text-status-neutral-text">Closed Jobs</p>
           <p className="text-2xl font-bold text-foreground">
-            {jobs.filter(j => j.status === "Closed").length}
+            {jobs.filter(j => j.status === "Expired").length}
           </p>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="section-card">
-        <div className="p-4 flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by title, ID, or location..."
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+     <Card className="border-border/60 shadow-sm mb-6">
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-1 gap-4 flex-col sm:flex-row">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input placeholder="Search jobs..." className="pl-9" />
+              </div>
+              <Select>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Department" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border border-border">
+                  <SelectItem value="all">All Departments</SelectItem>
+                  <SelectItem value="it">IT Department</SelectItem>
+                  <SelectItem value="hr">Human Resources</SelectItem>
+                  <SelectItem value="policy">Policy Division</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select>
+                <SelectTrigger className="w-full sm:w-[150px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border border-border">
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="closing">Closing Soon</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Link to="/add-job">
+              <Button className="bg-primary hover:bg-primary/90">
+                <Plus className="mr-2 h-4 w-4" />
+                Add New Job
+              </Button>
+            </Link>
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-40">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="Active">Active</SelectItem>
-              <SelectItem value="Closed">Closed</SelectItem>
-              <SelectItem value="Draft">Draft</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-            <SelectTrigger className="w-full sm:w-52">
-              <SelectValue placeholder="Department" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Departments</SelectItem>
-              {departments.map((dept) => (
-                <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* Jobs Table */}
-      <div className="section-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Job ID</th>
-                <th>Title</th>
-                <th>Department</th>
-                <th>Location</th>
-                <th>Type</th>
-                <th>Applications</th>
-                <th>Deadline</th>
-                <th>Status</th>
-                <th className="text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredJobs.map((job) => (
-                <tr key={job.id}>
-                  <td className="font-mono text-xs text-muted-foreground">
-                    {job.id}
-                  </td>
-                  <td>
-                    <p className="font-medium text-foreground">{job.title}</p>
-                    <p className="text-xs text-muted-foreground">{job.salary}</p>
-                  </td>
-                  <td>{job.department}</td>
-                  <td>{job.location}</td>
-                  <td>
-                    <Badge variant="secondary" className="font-normal">
-                      {job.type}
-                    </Badge>
-                  </td>
-                  <td>
-                    <span className="font-semibold text-primary">{job.applications}</span>
-                  </td>
-                  <td className="text-muted-foreground">
-                    {new Date(job.deadline).toLocaleDateString()}
-                  </td>
-                  <td>
-                    <span className={getStatusBadgeClass(job.status)}>
-                      {job.status}
-                    </span>
-                  </td>
-                  <td className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Eye className="h-4 w-4 mr-2" />
-                          View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit Job
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Copy className="h-4 w-4 mr-2" />
-                          Duplicate
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* Jobs Grid */}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {jobs.map((job) => (
+          <Card key={job._id} className="border-border/60 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between mb-3">
+                <h3 className="font-semibold text-foreground mb-2 line-clamp-2">
+                  {job.title}
+                </h3>
+                <Badge variant="outline" className={statusConfig[job.status].className}>
+                  {statusConfig[job.status].label}
+                </Badge>
+              </div>
 
-        {filteredJobs.length === 0 && (
-          <div className="p-12 text-center">
-            <p className="text-muted-foreground">No jobs found matching your criteria.</p>
-          </div>
-        )}
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Building2 className="h-4 w-4" />
+                  <span>{job.department}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="h-4 w-4" />
+                  <span>{job.location}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Wallet className="h-4 w-4" />
+                  <span>{job.salary || "N/A"}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Calendar className="h-4 w-4" />
+                  <span>Deadline: {job.deadline
+                    ? new Date(job.deadline).toLocaleDateString("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric"
+                    })
+                    : "N/A"}</span>
+                </div>
+              </div>
 
-        {/* Pagination Footer */}
-        <div className="px-6 py-4 border-t border-border flex items-center justify-between bg-muted/30">
-          <p className="text-sm text-muted-foreground">
-            Showing {filteredJobs.length} of {jobs.length} jobs
-          </p>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled>
-              Previous
-            </Button>
-            <Button variant="outline" size="sm">
-              Next
-            </Button>
-          </div>
-        </div>
+              <div className="flex items-center justify-between pt-3 border-t border-border/60">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium text-primary">{job.applications} applications</span>
+                </div>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                   <Link to={`/edit-job/${job._id}`}> <Edit className="h-4 w-4" /></Link>
+                  </Button>
+                  <Button onClick={() => handleDelete(job._id)} variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   );

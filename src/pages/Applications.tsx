@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { applications, Application } from "@/lib/mockData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,41 +13,37 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Search, MoreVertical, Eye, CheckCircle, XCircle, Mail } from "lucide-react";
+import { Search, MoreVertical, Eye, CheckCircle, XCircle, Mail, Download, UserRound, MoreHorizontal, FileText, Phone, X } from "lucide-react";
+import { useAts } from "@/context/AtsContext";
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar } from "@radix-ui/react-avatar";
+import { AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Link } from "react-router-dom";
 
-const getStatusBadgeClass = (status: string) => {
-  switch (status) {
-    case "New":
-      return "status-badge bg-blue-100 text-blue-800";
-    case "Reviewed":
-      return "status-badge status-reviewed";
-    case "Shortlisted":
-      return "status-badge bg-purple-100 text-purple-800";
-    case "Hired":
-      return "status-badge status-active";
-    case "Rejected":
-      return "status-badge status-closed";
-    default:
-      return "status-badge";
-  }
+const statusConfig: Record<"submitted" | "Reviewing" | "Shortlisted" | "rejected", { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
+  submitted: { label: "submitted", variant: "secondary" },
+  Reviewing: { label: "Reviewing", variant: "outline" },
+  Shortlisted: { label: "Shortlisted", variant: "default" },
+  rejected: { label: "Rejected", variant: "destructive" },
 };
 
 export default function Applications() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const { getApplications, applications, deleteApplication, loading } = useAts()
 
-  const filteredApplications = applications.filter((app) => {
-    const matchesSearch = 
-      app.applicantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.jobTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.email.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === "all" || app.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
+  useEffect(() => {
+    getApplications()
+  }, [])
+
+  const handleDelete = async (id: string) => {
+    const confirmed = window.confirm("Are you sure you want to remove this application?");
+    if (!confirmed) return;
+
+    await deleteApplication(id);
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -60,134 +56,196 @@ export default function Applications() {
       </div>
 
       {/* Filters */}
-      <div className="section-card">
-        <div className="p-4 flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name, email, or job title..."
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+      <Card className="border-border/60 shadow-sm mb-6">
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-1 gap-4 flex-col sm:flex-row">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input placeholder="Search by name or email..." className="pl-9" />
+              </div>
+              <Select>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Position" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border border-border">
+                  <SelectItem value="all">All Positions</SelectItem>
+                  <SelectItem value="software">Software Engineer</SelectItem>
+                  <SelectItem value="policy">Policy Analyst</SelectItem>
+                  <SelectItem value="admin">Administrative Officer</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select>
+                <SelectTrigger className="w-full sm:w-[150px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border border-border">
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="reviewing">Under Review</SelectItem>
+                  <SelectItem value="shortlisted">Shortlisted</SelectItem>
+                  <SelectItem value="interview">Interview</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button variant="outline" className="border-primary/30 text-primary hover:bg-primary/5">
+              <Download className="mr-2 h-4 w-4" />
+              Export CSV
+            </Button>
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-48">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="New">New</SelectItem>
-              <SelectItem value="Reviewed">Reviewed</SelectItem>
-              <SelectItem value="Shortlisted">Shortlisted</SelectItem>
-              <SelectItem value="Hired">Hired</SelectItem>
-              <SelectItem value="Rejected">Rejected</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Applications Table */}
-      <div className="section-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Application ID</th>
-                <th>Applicant</th>
-                <th>Applied For</th>
-                <th>Applied Date</th>
-                <th>Experience</th>
-                <th>Status</th>
-                <th className="text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredApplications.map((app) => (
-                <tr key={app.id}>
-                  <td className="font-mono text-xs text-muted-foreground">
-                    {app.id}
-                  </td>
-                  <td>
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <span className="text-xs font-semibold text-primary">
-                          {app.applicantName.split(' ').map(n => n[0]).join('')}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-medium text-foreground">{app.applicantName}</p>
-                        <p className="text-xs text-muted-foreground">{app.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <p className="font-medium">{app.jobTitle}</p>
-                    <p className="text-xs text-muted-foreground">{app.qualification}</p>
-                  </td>
-                  <td className="text-muted-foreground">
-                    {new Date(app.appliedDate).toLocaleDateString()}
-                  </td>
-                  <td>{app.experience}</td>
-                  <td>
-                    <span className={getStatusBadgeClass(app.status)}>
-                      {app.status}
-                    </span>
-                  </td>
-                  <td className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Eye className="h-4 w-4 mr-2" />
-                          View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Mail className="h-4 w-4 mr-2" />
-                          Send Email
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Shortlist
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Reject
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
+      <Card className="border-border/60 shadow-sm">
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border/60 bg-muted/30">
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Applicants
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Position
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    ATS Score
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Applied Date
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {loading && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">
+                      Loading applications...
+                    </td>
+                  </tr>
+                )}
 
-        {filteredApplications.length === 0 && (
-          <div className="p-12 text-center">
-            <p className="text-muted-foreground">No applications found matching your criteria.</p>
-          </div>
-        )}
+                {!loading && applications.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">
+                      No applications found
+                    </td>
+                  </tr>
+                )}
 
-        {/* Pagination Footer */}
-        <div className="px-6 py-4 border-t border-border flex items-center justify-between bg-muted/30">
-          <p className="text-sm text-muted-foreground">
-            Showing {filteredApplications.length} of {applications.length} applications
-          </p>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled>
-              Previous
-            </Button>
-            <Button variant="outline" size="sm">
-              Next
-            </Button>
+                {!loading &&
+                  applications.map((app) => (
+                    <tr key={app._id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                              {app.applicantName
+                                ? app.applicantName
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                : <UserRound />}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium text-foreground">
+                              {app.applicantName}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {app.applicantEmail}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-4">
+                        <p className="font-medium text-foreground">
+                          {app.jobId?.title || "N/A"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {app.jobId?.department || "N/A"}
+                        </p>
+                      </td>
+
+                      <td className="px-4 py-4">
+                        <p className="text-sm text-foreground">{app.score}</p>
+                      </td>
+
+                      <td className="px-4 py-4 text-sm text-muted-foreground">
+                        {app.appliedDate
+                          ? new Date(app.appliedDate).toLocaleDateString("en-IN", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })
+                          : "N/A"}
+                      </td>
+
+                      <td className="px-4 py-4">
+                        <Badge variant={statusConfig[app.status].variant}>
+                          {statusConfig[app.status].label}
+                        </Badge>
+                      </td>
+
+                      <td className="px-4 py-4">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="icon">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+
+                            <DropdownMenuContent align="end" className="bg-popover border border-border">
+                              <DropdownMenuItem>
+                                <FileText className="mr-2 h-4 w-4" />
+                                <Link to={`/view-application/${app._id}`}>View Details</Link>
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem>
+                                <Mail className="mr-2 h-4 w-4" />
+                                Send Email
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem>
+                                <Phone className="mr-2 h-4 w-4" />
+                                Schedule Call
+                              </DropdownMenuItem>
+
+                              <DropdownMenuSeparator />
+
+                              <DropdownMenuItem
+                                className="cursor-pointer text-destructive"
+                                onClick={() => handleDelete(app._id)}
+                              >
+                                <X className="mr-2 h-4 w-4" />
+                                Delete Application
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+
+            </table>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

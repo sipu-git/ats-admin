@@ -1,4 +1,3 @@
-import { StatCard } from "@/components/StatCard";
 import { 
   Briefcase, 
   FileText, 
@@ -7,10 +6,14 @@ import {
   TrendingUp,
   Clock
 } from "lucide-react";
-import { dashboardStats, applications, jobs } from "@/lib/mockData";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { useEffect } from "react";
+import { useAts } from "../context/AtsContext";
 import { useNavigate } from "react-router-dom";
+import { ActiveJobsTable } from "../components/ActiveJobsTable";
+import { RecentApplications } from "../components/RecentApplications";
+import { Button } from "../components/ui/button";
+import { StatCard } from "@/components/StatCard";
+import { dashboardStats } from "@/lib/mockData";
 
 const getStatusBadgeClass = (status: string) => {
   switch (status) {
@@ -30,10 +33,12 @@ const getStatusBadgeClass = (status: string) => {
 };
 
 export default function Dashboard() {
-  const navigate = useNavigate();
-  const recentApplications = applications.slice(0, 5);
-  const activeJobs = jobs.filter(j => j.status === "Active").slice(0, 4);
-
+  const {jobsLength,applicationsLength,getJobs,getApplications} = useAts()
+  useEffect(()=>{
+    getJobs()
+    getApplications()
+  },[])
+  const navigate = useNavigate()
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Page Header */}
@@ -48,14 +53,14 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Active Job Posts"
-          value={dashboardStats.activeJobs}
+          value={jobsLength}
           change="+2 from last month"
           changeType="positive"
           icon={Briefcase}
         />
         <StatCard
           title="Total Applications"
-          value={dashboardStats.totalApplications}
+          value={applicationsLength}
           change="+18% from last week"
           changeType="positive"
           icon={FileText}
@@ -77,75 +82,12 @@ export default function Dashboard() {
       </div>
 
       {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Applications */}
-        <div className="section-card">
-          <div className="section-header flex items-center justify-between">
-            <h2 className="section-title">Recent Applications</h2>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => navigate("/applications")}
-            >
-              View All
-            </Button>
-          </div>
-          <div className="divide-y divide-border">
-            {recentApplications.map((app) => (
-              <div key={app.id} className="px-6 py-4 flex items-center justify-between hover:bg-accent/30 transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-sm font-semibold text-primary">
-                      {app.applicantName.split(' ').map(n => n[0]).join('')}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{app.applicantName}</p>
-                    <p className="text-xs text-muted-foreground">{app.jobTitle}</p>
-                  </div>
-                </div>
-                <span className={getStatusBadgeClass(app.status)}>
-                  {app.status}
-                </span>
-              </div>
-            ))}
-          </div>
+     <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <ActiveJobsTable />
         </div>
-
-        {/* Active Jobs */}
-        <div className="section-card">
-          <div className="section-header flex items-center justify-between">
-            <h2 className="section-title">Active Job Listings</h2>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => navigate("/jobs")}
-            >
-              View All
-            </Button>
-          </div>
-          <div className="divide-y divide-border">
-            {activeJobs.map((job) => (
-              <div key={job.id} className="px-6 py-4 hover:bg-accent/30 transition-colors">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{job.title}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {job.department} • {job.location}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-primary">{job.applications}</p>
-                    <p className="text-xs text-muted-foreground">applications</p>
-                  </div>
-                </div>
-                <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-                  <span>Deadline: {new Date(job.deadline).toLocaleDateString()}</span>
-                  <span className="status-badge status-active">{job.status}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div>
+          <RecentApplications />
         </div>
       </div>
 
@@ -155,7 +97,7 @@ export default function Dashboard() {
           <h2 className="section-title">Quick Actions</h2>
         </div>
         <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Button 
+          <Button
             className="h-auto py-4 flex flex-col items-center gap-2"
             onClick={() => navigate("/add-job")}
           >

@@ -1,13 +1,16 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { Bell, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
+import { Button } from "./ui/button";
+// import { Button } from "@/components/ui/button";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
+  const navigate = useNavigate()
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
@@ -19,15 +22,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <SidebarTrigger className="h-9 w-9" />
               <div className="h-6 w-px bg-border" />
               <span className="text-sm text-muted-foreground">
-                Government Job Portal Administration
+                Job Portal Administration
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground flex items-center justify-center">
-                  3
-                </span>
+              <Button variant="ghost" size="icon" onClick={()=>navigate("/")} className="relative bg-[rgba(255,16,16,0.5)] rounded-[30px] text-white w-16 h-8">
+                Logout
               </Button>
               <div className="h-6 w-px bg-border" />
               <div className="flex items-center gap-3 pl-2">
